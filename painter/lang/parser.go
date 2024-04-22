@@ -1,9 +1,9 @@
 package lang
 
 import (
-	""bufio"
+	"bufio"
 	"fmt"
-	"image/color""
+	"image/color"
 	"strconv"
 	"strings"
 	"io"
