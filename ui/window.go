@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"golang.org/x/exp/shiny/driver"
-	"golang.org/x/exp/shiny/imageutil"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/draw"
 	"golang.org/x/mobile/event/key"
@@ -20,13 +19,11 @@ type Visualizer struct {
 	Title         string
 	Debug         bool
 	OnScreenReady func(s screen.Screen)
-
-	w    screen.Window
-	tx   chan screen.Texture
-	done chan struct{}
-
-	sz  size.Event
-	pos image.Rectangle
+	w             screen.Window
+	tx            chan screen.Texture
+	done          chan struct{}
+	sz            size.Event
+	pos           image.Rectangle
 }
 
 func (pw *Visualizer) Main() {
@@ -36,14 +33,18 @@ func (pw *Visualizer) Main() {
 	pw.pos.Max.Y = 200
 	driver.Main(pw.run)
 }
-
 func (pw *Visualizer) Update(t screen.Texture) {
 	pw.tx <- t
 }
-
 func (pw *Visualizer) run(s screen.Screen) {
+	if pw.OnScreenReady != nil {
+		pw.OnScreenReady(s)
+	}
+
 	w, err := s.NewWindow(&screen.NewWindowOptions{
-		Title: pw.Title,
+		Title:  pw.Title,
+		Width:  800,
+		Height: 800,
 	})
 	if err != nil {
 		log.Fatal("Failed to initialize the app window:", err)
@@ -52,13 +53,7 @@ func (pw *Visualizer) run(s screen.Screen) {
 		w.Release()
 		close(pw.done)
 	}()
-
-	if pw.OnScreenReady != nil {
-		pw.OnScreenReady(s)
-	}
-
 	pw.w = w
-
 	events := make(chan any)
 	go func() {
 		for {
@@ -73,9 +68,7 @@ func (pw *Visualizer) run(s screen.Screen) {
 			events <- e
 		}
 	}()
-
 	var t screen.Texture
-
 	for {
 		select {
 		case e, ok := <-events:
@@ -83,13 +76,11 @@ func (pw *Visualizer) run(s screen.Screen) {
 				return
 			}
 			pw.handleEvent(e, t)
-
 		case t = <-pw.tx:
 			w.Send(paint.Event{})
 		}
 	}
 }
-
 func detectTerminate(e any) bool {
 	switch e := e.(type) {
 	case lifecycle.Event:
@@ -103,21 +94,16 @@ func detectTerminate(e any) bool {
 	}
 	return false
 }
-
 func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 	switch e := e.(type) {
-
 	case size.Event: // Оновлення даних про розмір вікна.
 		pw.sz = e
-
 	case error:
 		log.Printf("ERROR: %s", e)
-
 	case mouse.Event:
 		if t == nil {
 			// TODO: Реалізувати реакцію на натискання кнопки миші.
 		}
-
 	case paint.Event:
 		// Малювання контенту вікна.
 		if t == nil {
@@ -129,14 +115,18 @@ func (pw *Visualizer) handleEvent(e any, t screen.Texture) {
 		pw.w.Publish()
 	}
 }
-
 func (pw *Visualizer) drawDefaultUI() {
-	pw.w.Fill(pw.sz.Bounds(), color.Black, draw.Src) // Фон.
+	green := color.RGBA{0, 255, 0, 255}
+	pw.w.Fill(pw.sz.Bounds(), green, draw.Src) // Фон
 
 	// TODO: Змінити колір фону та додати відображення фігури у вашому варіанті.
+	pw.w.Fill(
+		image.Rect(250, 300, 550, 400),
+		color.RGBA{R: 0, G: 0, B: 255, A: 1},
+		draw.Src)
 
-	// Малювання білої рамки.
-	for _, br := range imageutil.Border(pw.sz.Bounds(), 10) {
-		pw.w.Fill(br, color.White, draw.Src)
-	}
+	pw.w.Fill(
+		image.Rect(350, 300, 450, 500),
+		color.RGBA{R: 0, G: 0, B: 255, A: 1},
+		draw.Src)
 }
