@@ -31,14 +31,26 @@ func (l *Loop) Start(s screen.Screen) {
 	l.next, _ = s.NewTexture(size)
 	l.prev, _ = s.NewTexture(size)
 
-	// TODO: стартувати цикл подій.
+	l.mq = messageQueue{}
+	go l.eventProcess()
+}
+
+func (l *Loop) eventProcess() {
+	for {
+		op := l.mq.pull()
+		l.Post(op)
+	}
 }
 
 // Post додає нову операцію у внутрішню чергу.
 func (l *Loop) Post(op Operation) {
-	if update := op.Do(l.next); update {
-		l.Receiver.Update(l.next)
-		l.next, l.prev = l.prev, l.next
+	if op != nil {
+		l.mq.push(op)
+		update := op.Do(l.next)
+		if update {
+			l.Receiver.Update(l.next)
+			l.next, l.prev = l.prev, l.next
+		}
 	}
 }
 
@@ -47,12 +59,22 @@ func (l *Loop) StopAndWait() {
 }
 
 // TODO: Реалізувати чергу подій.
-type messageQueue struct{}
+type messageQueue struct {
+	queue []Operation
+}
 
-func (mq *messageQueue) push(op Operation) {}
+func (mq *messageQueue) push(op Operation) {
+	mq.queue = append(mq.queue, op)
+}
 
 func (mq *messageQueue) pull() Operation {
-	return nil
+	if len(mq.queue) == 0 {
+		return nil
+	}
+
+	op := mq.queue[0]
+	mq.queue = mq.queue[1:]
+	return op
 }
 
 func (mq *messageQueue) empty() bool {
