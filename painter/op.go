@@ -68,3 +68,21 @@ func (op *Figure) Do(t screen.Texture) bool {
 	t.Fill(image.Rect(op.x-50, op.y, op.x+50, op.y+100), op.c, draw.Src)
 	return false
 }
+
+type Move struct {
+	X, Y    int
+	Figures []*Figure
+}
+
+func ResetScreen(t screen.Texture) {
+	t.Fill(t.Bounds(), color.Black, draw.Src)
+}
+
+func (op *Move) Do(t screen.Texture) bool {
+	for i := range op.Figures {
+		op.Figures[i].x += op.x
+		op.Figures[i].y += op.y
+		op.Figures[i].Do(t)
+	}
+	return false
+}
