@@ -84,11 +84,11 @@ func (p *Parser) parse(commandLine string) error {
 	if len(parts) > 1 {
 		args = parts[1:]
 	}
-	var iArgs []int
+	var fArgs []float64
 	for _, arg := range args {
-		i, err := strconv.Atoi(arg)
+		f, err := strconv.ParseFloat(arg, 64)
 		if err == nil {
-			iArgs = append(iArgs, i)
+			fArgs = append(fArgs, f)
 		}
 	}
 
@@ -98,13 +98,13 @@ func (p *Parser) parse(commandLine string) error {
 	case "green":
 		p.lastBgColor = painter.OperationFunc(painter.GreenFill)
 	case "bgrect":
-		p.lastBgRect = &painter.BgRectangle{X1: iArgs[0], Y1: iArgs[1], X2: iArgs[2], Y2: iArgs[3]}
+		p.lastBgRect = &painter.BgRectangle{X1: int(800 * fArgs[0]), Y1: int(800 * fArgs[1]), X2: int(800 * fArgs[2]), Y2: int(800 * fArgs[3])}
 	case "figure":
 		clr := color.RGBA{R: 0, G: 0, B: 255, A: 1}
-		figure := painter.Figure{X: iArgs[0], Y: iArgs[1], C: clr}
+		figure := painter.Figure{X: int(800 * fArgs[0]), Y: int(800 * fArgs[1]), C: clr}
 		p.figures = append(p.figures, &figure)
 	case "move":
-		moveOp := painter.Move{X: iArgs[0], Y: iArgs[1], Figures: p.figures}
+		moveOp := painter.Move{X: int(800 * fArgs[0]), Y: int(800 * fArgs[1]), Figures: p.figures}
 		p.moveOps = append(p.moveOps, &moveOp)
 	case "reset":
 		p.resetState()
