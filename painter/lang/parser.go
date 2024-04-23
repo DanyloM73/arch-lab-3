@@ -100,7 +100,7 @@ func (p *Parser) parse(commandLine string) error {
 	case "bgrect":
 		p.lastBgRect = &painter.BgRectangle{X1: iArgs[0], Y1: iArgs[1], X2: iArgs[2], Y2: iArgs[3]}
 	case "figure":
-		clr := color.RGBA{R: 255, G: 255, B: 0, A: 1}
+		clr := color.RGBA{R: 0, G: 0, B: 255, A: 1}
 		figure := painter.Figure{X: iArgs[0], Y: iArgs[1], C: clr}
 		p.figures = append(p.figures, &figure)
 	case "move":

@@ -2,6 +2,7 @@ package painter
 
 import (
 	"image"
+	"sync"
 
 	"golang.org/x/exp/shiny/screen"
 )
@@ -14,14 +15,11 @@ type Receiver interface {
 // Loop реалізує цикл подій для формування текстури отриманої через виконання операцій отриманих з внутрішньої черги.
 type Loop struct {
 	Receiver Receiver
-
-	next screen.Texture // текстура, яка зараз формується
-	prev screen.Texture // текстура, яка була відправлення останнього разу у Receiver
-
-	mq messageQueue
-
-	stop    chan struct{}
-	stopReq bool
+	next     screen.Texture // текстура, яка зараз формується
+	prev     screen.Texture // текстура, яка була відправлення останнього разу у Receiver
+	mq       messageQueue
+	stop     chan struct{}
+	stopReq  bool
 }
 
 var size = image.Pt(800, 800)
@@ -31,34 +29,23 @@ func (l *Loop) Start(s screen.Screen) {
 	l.next, _ = s.NewTexture(size)
 	l.prev, _ = s.NewTexture(size)
 
-	l.mq = messageQueue{}
 	l.stop = make(chan struct{})
-	go l.eventProcess()
-}
 
-func (l *Loop) eventProcess() {
-	for {
-		if l.stopReq {
-			close(l.stop)
-			return
-		}
-		if !l.mq.empty() {
+	go func() {
+		for !l.stopReq || !l.mq.empty() {
 			op := l.mq.pull()
-			l.Post(op)
+			if update := op.Do(l.next); update {
+				l.Receiver.Update(l.next)
+				l.next, l.prev = l.prev, l.next
+			}
 		}
-	}
+		close(l.stop)
+	}()
 }
 
 // Post додає нову операцію у внутрішню чергу.
 func (l *Loop) Post(op Operation) {
-	if op != nil {
-		l.mq.push(op)
-		update := op.Do(l.next)
-		if update {
-			l.Receiver.Update(l.next)
-			l.next, l.prev = l.prev, l.next
-		}
-	}
+	l.mq.push(op)
 }
 
 // StopAndWait сигналізує про необхідність завершити цикл та блокується до моменту його повної зупинки.
@@ -69,25 +56,44 @@ func (l *Loop) StopAndWait() {
 	<-l.stop
 }
 
-// TODO: Реалізувати чергу подій.
 type messageQueue struct {
-	queue []Operation
+	ops     []Operation
+	mu      sync.Mutex
+	blocked chan struct{}
 }
 
 func (mq *messageQueue) push(op Operation) {
-	mq.queue = append(mq.queue, op)
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
+
+	mq.ops = append(mq.ops, op)
+
+	if mq.blocked != nil {
+		close(mq.blocked)
+		mq.blocked = nil
+	}
 }
 
 func (mq *messageQueue) pull() Operation {
-	if len(mq.queue) == 0 {
-		return nil
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
+
+	for len(mq.ops) == 0 {
+		mq.blocked = make(chan struct{})
+		mq.mu.Unlock()
+		<-mq.blocked
+		mq.mu.Lock()
 	}
 
-	op := mq.queue[0]
-	mq.queue = mq.queue[1:]
+	op := mq.ops[0]
+	mq.ops[0] = nil
+	mq.ops = mq.ops[1:]
 	return op
 }
 
 func (mq *messageQueue) empty() bool {
-	return len(mq.queue) == 0
+	mq.mu.Lock()
+	defer mq.mu.Unlock()
+
+	return len(mq.ops) == 0
 }
