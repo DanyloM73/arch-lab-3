@@ -24,7 +24,7 @@ type Loop struct {
 	stopReq bool
 }
 
-var size = image.Pt(400, 400)
+var size = image.Pt(800, 800)
 
 // Start запускає цикл подій. Цей метод потрібно запустити до того, як викликати на ньому будь-які інші методи.
 func (l *Loop) Start(s screen.Screen) {
@@ -32,13 +32,20 @@ func (l *Loop) Start(s screen.Screen) {
 	l.prev, _ = s.NewTexture(size)
 
 	l.mq = messageQueue{}
+	l.stop = make(chan struct{})
 	go l.eventProcess()
 }
 
 func (l *Loop) eventProcess() {
 	for {
-		op := l.mq.pull()
-		l.Post(op)
+		if l.stopReq {
+			close(l.stop)
+			return
+		}
+		if !l.mq.empty() {
+			op := l.mq.pull()
+			l.Post(op)
+		}
 	}
 }
 
@@ -56,6 +63,10 @@ func (l *Loop) Post(op Operation) {
 
 // StopAndWait сигналізує про необхідність завершити цикл та блокується до моменту його повної зупинки.
 func (l *Loop) StopAndWait() {
+	l.Post(OperationFunc(func(screen.Texture) {
+		l.stopReq = true
+	}))
+	<-l.stop
 }
 
 // TODO: Реалізувати чергу подій.
@@ -78,5 +89,5 @@ func (mq *messageQueue) pull() Operation {
 }
 
 func (mq *messageQueue) empty() bool {
-	return false
+	return len(mq.queue) == 0
 }

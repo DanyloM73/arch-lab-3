@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"image/color"
+
+	"io"
 	"strconv"
 	"strings"
-	"io"
 
 	"github.com/DanyloM73/arch-lab-3/painter"
 )
@@ -20,9 +21,9 @@ func (p *Parser) Parse(in io.Reader) ([]painter.Operation, error) {
 	scanner.Split(bufio.ScanLines)
 
 	var result []painter.Operation
-	for scanner.Scan() { 
+	for scanner.Scan() {
 		commandLine := scanner.Text()
-		oprtn := parse(commandLine) 
+		oprtn := parse(commandLine)
 		if oprtn == nil {
 			return nil, fmt.Errorf("Failed to parse this command: %s", commandLine)
 		}
@@ -64,14 +65,14 @@ func parse(commandLine string) painter.Operation {
 	case "green":
 		return painter.OperationFunc(painter.GreenFill)
 	case "bgrect":
-		return &painter.BgRectangle{x1: iArgs[0], y1: iArgs[1], x2: iArgs[2], y2: iArgs[3]}
+		return &painter.BgRectangle{X1: iArgs[0], Y1: iArgs[1], X2: iArgs[2], Y2: iArgs[3]}
 	case "figure":
 		clr := color.RGBA{R: 255, G: 255, B: 0, A: 1}
-		figure := painter.Figure{x: iArgs[0], y: iArgs[1], c: clr}
+		figure := painter.Figure{X: iArgs[0], Y: iArgs[1], C: clr}
 		figureOps = append(figureOps, figure)
 		return &figure
 	case "move":
-		return &painter.Move{x: iArgs[0], y: iArgs[1], Figures: figureOps}
+		return &painter.Move{X: iArgs[0], Y: iArgs[1], Figures: figureOps}
 	case "reset":
 		figureOps = figureOps[0:0]
 		return painter.OperationFunc(painter.ResetScreen)
