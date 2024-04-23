@@ -76,7 +76,7 @@ func ResetScreen(t screen.Texture) {
 
 type Move struct {
 	X, Y    int
-	Figures []Figure
+	Figures []*Figure
 }
 
 type Figure struct {
